@@ -1,0 +1,131 @@
+<!--
+  ~ The MIT License (MIT)
+  ~
+  ~ Copyright (c) 2014 schors
+  ~
+  ~ Permission is hereby granted, free of charge, to any person obtaining a copy
+  ~ of this software and associated documentation files (the "Software"), to deal
+  ~ in the Software without restriction, including without limitation the rights
+  ~ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  ~ copies of the Software, and to permit persons to whom the Software is
+  ~ furnished to do so, subject to the following conditions:
+  ~
+  ~ The above copyright notice and this permission notice shall be included in all
+  ~ copies or substantial portions of the Software.
+  ~
+  ~ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  ~ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  ~ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  ~ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  ~ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  ~ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  ~ SOFTWARE.
+  -->
+
+<project xmlns:ivy="antlib:org.apache.ivy.ant" name="eva" default="pack">
+
+    <property name="ivy.install.version" value="2.3.0"/>
+    <property name="ivy.jar.dir" value="${basedir}/ivy"/>
+    <property name="ivy.jar.file" value="${ivy.jar.dir}/ivy.jar"/>
+
+    <property name="build.dir" value="build"/>
+    <property name="src.dir" value="src"/>
+    <property name="lib.dir" value="lib"/>
+    <property name="classes.dir" value="${build.dir}/classes"/>
+    <property name="out.dir" value="${build.dir}/out"/>
+
+
+    <path id="lib.path.id">
+        <fileset dir="${lib.dir}"/>
+    </path>
+
+    <path id="run.path.id">
+        <path refid="lib.path.id"/>
+        <path location="${classes.dir}"/>
+    </path>
+
+    <target name="download-ivy" unless="skip.download">
+        <mkdir dir="${ivy.jar.dir}"/>
+        <echo message="installing ivy..."/>
+        <get src="http://repo1.maven.org/maven2/org/apache/ivy/ivy/${ivy.install.version}/ivy-${ivy.install.version}.jar"
+             dest="${ivy.jar.file}" usetimestamp="true"/>
+    </target>
+
+    <target name="install-ivy" depends="download-ivy" description="--> install ivy">
+        <path id="ivy.lib.path">
+            <pathelement location="${ivy.jar.file}"/>
+        </path>
+        <taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant" classpathref="ivy.lib.path"/>
+    </target>
+
+    <target name="resolve" depends="install-ivy" description="--> retreive dependencies with ivy">
+        <!--<ivy:settings id="custom" file="ivy-settings-custom-repo.xml" />-->
+        <!--<ivy:retrieve settingsref="custom"/>-->
+        <ivy:retrieve/>
+    </target>
+
+    <target name="report" depends="resolve" description="--> generates a report of dependencies">
+        <ivy:report todir="${build.dir}"/>
+    </target>
+
+    <target name="build" depends="resolve" description="--> compile and run the project">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${classes.dir}"/>
+        <javac srcdir="${src.dir}" destdir="${classes.dir}" classpathref="lib.path.id" includeAntRuntime="false"
+               debug="false" deprecation="true" optimize="true"/>
+    </target>
+
+    <target name="pack" depends="build">
+        <mkdir dir="${out.dir}"/>
+        <mkdir dir="${out.dir}/webroot"/>
+
+        <pathconvert property="libs.project" pathsep=" ">
+            <mapper>
+                <chainedmapper>
+                    <flattenmapper/>
+                    <globmapper from="*" to="lib/*"/>
+                </chainedmapper>
+            </mapper>
+            <path refid="lib.path.id"/>
+        </pathconvert>
+
+        <jar jarfile="${out.dir}/${ant.project.name}.jar">
+            <fileset dir="${classes.dir}"/>
+            <manifest>
+                <attribute name="Main-Class" value="org.schors.evlampia.Main"/>
+                <attribute name="Class-Path" value="${libs.project}"/>
+            </manifest>
+        </jar>
+
+        <copy todir="${out.dir}">
+            <fileset dir="${basedir}/etc" includes="**/*.*"/>
+        </copy>
+        <copy todir="${out.dir}/webroot">
+            <fileset dir="${basedir}/webroot" includes="**/*.*"/>
+        </copy>
+    </target>
+
+    <target name="clean" description="--> clean the project">
+        <delete includeemptydirs="true">
+            <fileset dir="${basedir}">
+                <exclude name="src/**"/>
+                <exclude name="etc/**"/>
+                <exclude name="webroot/**"/>
+                <exclude name=".idea/**"/>
+                <exclude name="build.xml"/>
+                <exclude name="ivy.xml"/>
+                <exclude name="eva.iml"/>
+                <exclude name="ant.log"/>
+            </fileset>
+        </delete>
+    </target>
+
+    <target name="clean-cache" description="--> clean the ivy cache">
+        <ivy:cleancache/>
+    </target>
+
+    <target name="test" depends="pack">
+
+    </target>
+
+</project>
