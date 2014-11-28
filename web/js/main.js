@@ -162,9 +162,25 @@ app.controller('MainCtrl', function ($scope, Helper, $location) {
     }
 });
 
-app.controller('ChatCtrl', function ($scope) {
+app.controller('ChatCtrl', function ($scope, Helper) {
     $scope.name = "ChatCtrl";
     log('chat ctrl start');
+    $scope.ws = new WebSocket('ws://localhost:8080/ws/api');
+    $scope.ws.onopen = function (data) {
+        log('web socket opened');
+        log(data);
+        var name = Helper.storage.name;
+        $scope.ws.send({'timestamp': '', 'who': name, 'command': 'join', 'data': ''});
+    }
+    $scope.ws.onclose = function (data) {
+        log('web socket closed');
+        log(data);
+    }
+    $scope.ws.onmessage = function (data) {
+        log('web socket on message');
+        log(data);
+    }
+
 
 });
 
